@@ -12,7 +12,6 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.verify;
 
 /**
  * Test to {@link com.github.conferencetrack.dao.InputReader}
