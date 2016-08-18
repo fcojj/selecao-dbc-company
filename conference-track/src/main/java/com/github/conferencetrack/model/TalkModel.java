@@ -11,14 +11,10 @@ import java.util.Objects;
  */
 public class TalkModel {
 
-   private List<Talk> talks;
-
-
-    public TalkModel() {
-    }
+    private List<Talk> talks;
 
     public List<Talk> getTalks() {
-        if(talks == null){
+        if (talks == null) {
             talks = new ArrayList<Talk>();
         }
         return talks;

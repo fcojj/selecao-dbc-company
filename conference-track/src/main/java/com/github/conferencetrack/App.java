@@ -1,13 +1,18 @@
 package com.github.conferencetrack;
 
+import com.github.conferencetrack.controller.Controller;
+
 /**
- * Hello world!
+ * Seleção DBC Company: Conference Track Management
+ *
+ * @author Fco Jonas Rodrigues Júnior
+ * 18/08/2016
  *
  */
 public class App 
 {
     public static void main( String[] args )
     {
-        System.out.println( "Hello World!" );
+        new Controller().showTalksScheduling();
     }
 }

@@ -2,8 +2,11 @@
 package com.github.conferencetrack.model;
 
 import com.github.conferencetrack.bean.Talk;
+import com.github.conferencetrack.dao.InputReader;
+import com.google.common.annotations.VisibleForTesting;
 
 import java.time.Duration;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -13,21 +16,68 @@ import java.util.logging.Logger;
  */
 public class ModelFactory {
 
+    private static final Logger LOGGER = Logger.getLogger(ModelFactory.class.getName());
     public static final int TITLE_INDEX = 0;
     public static final int MINUTES_INDEX = 1;
     private TalkModel talkModel;
-    private SortedSet<Duration> durationsTalks;
-    private static final Logger LOGGER = Logger.getLogger(ModelFactory.class.getName());
     private Duration sessionMorning;
     private Duration sessionAfternoon;
-    private Duration trackDuration;
+    private InputReader inputReader;
     List<Talk> temp;
+
+    public ModelFactory() {
+        this.temp = new ArrayList<Talk>();
+        this.talkModel = new TalkModel();
+        this.sessionMorning = Duration.ofMinutes(180L);
+        this.sessionAfternoon = Duration.ofMinutes(240L);
+    }
 
     public TalkModel getTalkModel() {
         return talkModel;
     }
 
-    public void manufactureModel(List<String> data) {
+    public void showTalksScheduling(){
+        ListIterator<Talk> iterator = getTalkModel().getTalks().listIterator();
+        LocalTime localTime = LocalTime.of(9, 0);
+        System.out.print("TRACK 1:");
+        while (iterator.hasNext()) {
+            Talk talk = iterator.next();
+            System.out.print("\n" + localTime + " ");
+            System.out.print(talk.getTitle() + " ");
+
+            if (talk.getDuration() != null) {//not is lunch and not is networking
+                System.out.print(talk.getDuration().toMinutes() + "min");
+                if(iterator.next().getTitle().equals("Lunch")){// verify if next Talk is Lunch
+                    localTime = LocalTime.of(12,0);//adjustment time launch
+                }else {
+                    localTime = localTime.plusMinutes(talk.getDuration().toMinutes());
+                }
+                iterator.previous();
+            } else {// new track
+                if(talk.getTitle().equals("Networking Event")) {// verify if current Talk is Networking
+                    localTime = LocalTime.of(9, 0);//adjustment time launch
+                    if(iterator.hasNext()) {//adjustment TRACK
+                        System.out.print("\n\n" + iterator.next().getTrack() + ":");
+                        iterator.previous();
+                    }
+                }else if(talk.getTitle().equals("Lunch")){// verify if current Talk is Lunch
+                    localTime = LocalTime.of(13, 0);//adjustment time next Talk to 13 horus
+                }
+            }
+        }
+    }
+
+    public void manufactureModel(){
+        inputReader = new InputReader();
+
+        for(List<String> data : inputReader.fileProcess()){
+            processDataFile(data);
+        }
+
+        processScheduling();
+    }
+
+    private void processDataFile(List<String> data) {
         try {
             buildSubmittedTalks(data);
         } catch (NumberFormatException | IndexOutOfBoundsException e) {
@@ -35,16 +85,7 @@ public class ModelFactory {
         }
     }
 
-    public ModelFactory() {
-        this.temp = new ArrayList<Talk>();
-        this.talkModel = new TalkModel();
-        this.durationsTalks = new TreeSet<Duration>();
-        this.sessionMorning = Duration.ofMinutes(180L);
-        this.sessionAfternoon = Duration.ofMinutes(240L);
-        this.trackDuration = Duration.ofMinutes(420L);
-    }
-
-    public void processSchedule() {
+    private void processScheduling() {
         Duration sessionMorningCount = Duration.ofMinutes(0L);
         Duration sessionAfternoonCount = Duration.ofMinutes(0L);
         int countTrack = 1;
@@ -56,17 +97,17 @@ public class ModelFactory {
     private void scheduling(Duration sessionMorningCount, Duration sessionAfternoonCount, Integer countTrack) {
         ListIterator<Talk> iterator = talkModel.getTalks().listIterator();
 
-        schendulingSession(sessionMorning, sessionMorningCount, countTrack, iterator, "SESSION 1");
+        schedulingSession(sessionMorning, sessionMorningCount, countTrack, iterator, "SESSION 1");
 
         temp.add(createLunch(countTrack));//add lunch
         iterator = talkModel.getTalks().listIterator();
 
-        schendulingSession(sessionAfternoon, sessionAfternoonCount, countTrack, iterator, "SESSION 2");
-        schendulingNetworking(sessionAfternoonCount, countTrack);
+        schedulingSession(sessionAfternoon, sessionAfternoonCount, countTrack, iterator, "SESSION 2");
+        schedulingNetworking(sessionAfternoonCount, countTrack);
 
         countTrack++;
 
-        if (isFinishSchenduling()) {
+        if (isFinishScheduling()) {
             sessionMorningCount = sessionMorningCount.ofMinutes(0);
             sessionAfternoonCount = sessionAfternoonCount.ofMinutes(0);
             scheduling(sessionMorningCount, sessionAfternoonCount, countTrack);
@@ -75,11 +116,11 @@ public class ModelFactory {
         }
     }
 
-    private boolean isFinishSchenduling() {
+    private boolean isFinishScheduling() {
         return talkModel.getTalks().size() != 0;
     }
 
-    private void schendulingNetworking(Duration sessionAfternoonCount, Integer countTrack) {
+    private void schedulingNetworking(Duration sessionAfternoonCount, Integer countTrack) {
         if (!sessionAfternoonCount.minusMinutes(Duration.ofMinutes(180L).toMinutes()).isNegative()
                 || !sessionAfternoonCount.minusMinutes(Duration.ofMinutes(240L).toMinutes()).isZero()) {
             Talk talk = new Talk("Networking Event", "TRACK " + countTrack);
@@ -88,7 +129,7 @@ public class ModelFactory {
         }
     }
 
-    private void schendulingSession(Duration session, Duration sessionCount, Integer countTrack, ListIterator<Talk> iterator, String nameSession) {
+    private void schedulingSession(Duration session, Duration sessionCount, Integer countTrack, ListIterator<Talk> iterator, String nameSession) {
         while (iterator.hasNext()) {
             Talk talk = iterator.next();
 
